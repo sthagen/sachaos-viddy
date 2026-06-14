@@ -20,6 +20,18 @@ impl SQLiteStore {
             std::fs::remove_file(&path)?;
         }
 
+        // Pre-create the database file with owner-only permissions before SQLite
+        // opens it, otherwise the backup is created world-readable (#195).
+        #[cfg(unix)]
+        if init {
+            use std::os::unix::fs::OpenOptionsExt;
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .mode(0o600)
+                .open(&path)?;
+        }
+
         let conn = Connection::open_with_flags(
             path,
             rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE | rusqlite::OpenFlags::SQLITE_OPEN_CREATE,

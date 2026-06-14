@@ -63,6 +63,16 @@ async fn tokio_main() -> Result<()> {
         let mut app = App::new(args.clone(), store, false)?;
         app.run().await?;
     } else {
+        // Create the temporary directory with owner-only permissions so the
+        // backup (which may contain sensitive output) is not world-readable (#195).
+        #[cfg(unix)]
+        let tmp_dir = {
+            use std::os::unix::fs::PermissionsExt;
+            tempfile::Builder::new()
+                .permissions(std::fs::Permissions::from_mode(0o700))
+                .tempdir()?
+        };
+        #[cfg(not(unix))]
         let tmp_dir = tempfile::tempdir()?;
         let tmp_path = tmp_dir.into_path();
         let file_path = tmp_path.join("backup.sqlite");
